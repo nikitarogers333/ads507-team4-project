@@ -1,0 +1,26 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ads507_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    command: ["mysqld", "--local-infile=1"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/schema:/docker-entrypoint-initdb.d:ro
+
+  adminer:
+    image: adminer:4
+    container_name: ads507_adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+
+volumes:
+  mysql_data:
