@@ -18,7 +18,7 @@ services:
   adminer:
     image: adminer:4
     environment:
-      - ADMINER_DESIGN=pepa-linha
+      - ADMINER_DESIGN:pepa-linha
       - PHP_MEMORY_LIMIT=2G
       - UPLOAD_MAX_FILESIZE=2G
       - POST_MAX_SIZE=2G
