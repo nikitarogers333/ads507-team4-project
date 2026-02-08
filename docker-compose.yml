@@ -19,8 +19,9 @@ services:
     image: adminer:4
     environment:
       - ADMINER_DESIGN=pepa-linha
-      - PHP_INI_SCAN_DIR=/etc/php.d
-      - "PHP_MEMORY_LIMIT=2G"
+      - PHP_MEMORY_LIMIT=2G
+      - UPLOAD_MAX_FILESIZE=2G
+      - POST_MAX_SIZE=2G
     container_name: ads507_adminer
     restart: unless-stopped
     ports:
