@@ -19,10 +19,10 @@ services:
     image: adminer:4
     container_name: ads507_adminer
     environment:
-      - ADMINER_DESIGN:pepa-linha
-      - PHP_MEMORY_LIMIT=2G
-      - UPLOAD_MAX_FILESIZE=2G
-      - POST_MAX_SIZE=2G
+      ADMINER_DESIGN:pepa-linha
+      PHP_MEMORY_LIMIT=2G
+      UPLOAD_MAX_FILESIZE=2G
+      POST_MAX_SIZE=2G
     restart: unless-stopped
     ports:
       - "8081:8080"
