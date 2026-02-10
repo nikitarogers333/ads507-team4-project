@@ -5,3 +5,5 @@ logs/
 Dataset/
 data/
 *.log
+data/raw/*
+!data/raw/.gitkeep
