@@ -6,6 +6,10 @@
 
 USE olist_dw;
 
+-- Allow zero dates during transformation (LOAD DATA IGNORE may create them)
+SET SESSION sql_mode = REPLACE(@@sql_mode, 'NO_ZERO_DATE', '');
+SET SESSION sql_mode = REPLACE(@@sql_mode, 'NO_ZERO_IN_DATE', '');
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- fact_orders  (one row per order, enriched with computed metrics)
 -- ═══════════════════════════════════════════════════════════════════════════

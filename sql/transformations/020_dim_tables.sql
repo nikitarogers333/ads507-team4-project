@@ -109,6 +109,9 @@ CREATE TABLE dim_date (
     UNIQUE INDEX idx_dim_date (full_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Increase recursion depth for date generation (need ~1096 days)
+SET SESSION cte_max_recursion_depth = 2000;
+
 -- Generate dates from 2016-01-01 to 2018-12-31 using a recursive CTE
 INSERT INTO dim_date (date_key, full_date, year, quarter, month, month_name,
                       day, day_of_week, day_name, week_of_year)

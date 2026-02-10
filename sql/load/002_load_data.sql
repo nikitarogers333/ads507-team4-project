@@ -1,14 +1,14 @@
 -- ============================================================================
 -- 002_load_data.sql
 -- Loads raw CSV files from /data/raw into the staging tables.
--- CSV files are downloaded from the GitHub release by the pipeline script.
+-- Uses @variables + SET NULLIF() to handle empty-string NULLs in CSV data.
 -- ============================================================================
 
 USE olist_dw;
 
 -- ── Customers ───────────────────────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_customers_dataset.csv'
-INTO TABLE stg_customers
+IGNORE INTO TABLE stg_customers
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
@@ -17,26 +17,33 @@ IGNORE 1 ROWS
 
 -- ── Orders ──────────────────────────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_orders_dataset.csv'
-INTO TABLE stg_orders
+IGNORE INTO TABLE stg_orders
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
-(order_id, customer_id, order_status, order_purchase_timestamp,
- order_approved_at, order_delivered_carrier_date,
- order_delivered_customer_date, order_estimated_delivery_date);
+(order_id, customer_id, order_status,
+ @purchase, @approved, @carrier, @delivered, @estimated)
+SET
+    order_purchase_timestamp      = NULLIF(@purchase, ''),
+    order_approved_at             = NULLIF(@approved, ''),
+    order_delivered_carrier_date  = NULLIF(@carrier, ''),
+    order_delivered_customer_date = NULLIF(@delivered, ''),
+    order_estimated_delivery_date = NULLIF(@estimated, '');
 
 -- ── Order Items ─────────────────────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_order_items_dataset.csv'
-INTO TABLE stg_order_items
+IGNORE INTO TABLE stg_order_items
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
 (order_id, order_item_id, product_id, seller_id,
- shipping_limit_date, price, freight_value);
+ @shipping_limit, price, freight_value)
+SET
+    shipping_limit_date = NULLIF(@shipping_limit, '');
 
 -- ── Order Payments ──────────────────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_order_payments_dataset.csv'
-INTO TABLE stg_order_payments
+IGNORE INTO TABLE stg_order_payments
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
@@ -45,26 +52,39 @@ IGNORE 1 ROWS
 
 -- ── Order Reviews ───────────────────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_order_reviews_dataset.csv'
-INTO TABLE stg_order_reviews
+IGNORE INTO TABLE stg_order_reviews
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
-(review_id, order_id, review_score, review_comment_title,
- review_comment_message, review_creation_date, review_answer_timestamp);
+(review_id, order_id, review_score,
+ @title, @message, @creation, @answer)
+SET
+    review_comment_title    = NULLIF(@title, ''),
+    review_comment_message  = NULLIF(@message, ''),
+    review_creation_date    = NULLIF(@creation, ''),
+    review_answer_timestamp = NULLIF(@answer, '');
 
 -- ── Products ────────────────────────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_products_dataset.csv'
-INTO TABLE stg_products
+IGNORE INTO TABLE stg_products
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
-(product_id, product_category_name, product_name_lenght,
- product_description_lenght, product_photos_qty, product_weight_g,
- product_length_cm, product_height_cm, product_width_cm);
+(product_id, @cat, @name_len, @desc_len, @photos,
+ @weight, @length, @height, @width)
+SET
+    product_category_name      = NULLIF(@cat, ''),
+    product_name_lenght        = NULLIF(@name_len, ''),
+    product_description_lenght = NULLIF(@desc_len, ''),
+    product_photos_qty         = NULLIF(@photos, ''),
+    product_weight_g           = NULLIF(@weight, ''),
+    product_length_cm          = NULLIF(@length, ''),
+    product_height_cm          = NULLIF(@height, ''),
+    product_width_cm           = NULLIF(@width, '');
 
 -- ── Sellers ─────────────────────────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_sellers_dataset.csv'
-INTO TABLE stg_sellers
+IGNORE INTO TABLE stg_sellers
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
@@ -72,7 +92,7 @@ IGNORE 1 ROWS
 
 -- ── Geolocation (reassembled from 11 parts) ─────────────────────────────────
 LOAD DATA INFILE '/data/raw/olist_geolocation_dataset.csv'
-INTO TABLE stg_geolocation
+IGNORE INTO TABLE stg_geolocation
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
@@ -81,7 +101,7 @@ IGNORE 1 ROWS
 
 -- ── Product Category Translation ────────────────────────────────────────────
 LOAD DATA INFILE '/data/raw/product_category_name_translation.csv'
-INTO TABLE stg_category_translation
+IGNORE INTO TABLE stg_category_translation
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS

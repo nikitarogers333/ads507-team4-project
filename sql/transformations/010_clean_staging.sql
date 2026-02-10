@@ -17,13 +17,9 @@ SET customer_city  = TRIM(customer_city),
 UPDATE stg_customers
 SET customer_city = NULL WHERE customer_city = '';
 
--- Orders – set blank date columns to NULL
+-- Orders – normalise status to lowercase, trim strings
 UPDATE stg_orders
-SET order_approved_at             = NULL WHERE order_approved_at             = '0000-00-00 00:00:00';
-UPDATE stg_orders
-SET order_delivered_carrier_date  = NULL WHERE order_delivered_carrier_date  = '0000-00-00 00:00:00';
-UPDATE stg_orders
-SET order_delivered_customer_date = NULL WHERE order_delivered_customer_date = '0000-00-00 00:00:00';
+SET order_status = TRIM(LOWER(order_status));
 
 -- Products – normalise category names (lowercase, trim)
 UPDATE stg_products
