@@ -14,6 +14,25 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./sql/schema:/docker-entrypoint-initdb.d:ro
+      - ./sql/mysql_conf:/etc/mysql/conf.d:ro
+      - raw_data:/data/raw
+  
+  loader:
+    image: alpine:3.19
+    container_name: ads507_loader
+    restart: "no"
+    depends_on: ["mysql"]
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      RELEASE_TAG: v1.0-raw-data
+      REPO_OWNER: nikitarogers333
+      REPO_NAME: ads507-team4-project
+    volumes:
+      - raw_data:/data/raw
+      - ./sql/schema:/schema:ro
+      - ./scripts:/scripts:ro
+    command: ["sh", "/scripts/bootstrap_and_load.sh"]
 
   adminer:
     image: adminer:4
@@ -29,3 +48,4 @@ services:
 
 volumes:
   mysql_data:
+  raw_data:
