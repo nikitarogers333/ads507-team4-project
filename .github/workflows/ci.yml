@@ -1,0 +1,99 @@
+# =============================================================================
+# ci.yml – Continuous Integration for ADS-507 E-Commerce Pipeline
+# Runs on every push and pull request to main.
+# Validates: SQL syntax, shell scripts (shellcheck), Docker build.
+# =============================================================================
+
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose config
+        run: docker compose config --quiet
+
+      - name: Check SQL files for syntax issues
+        run: |
+          echo "Checking SQL files for common issues..."
+          errors=0
+          for f in sql/**/*.sql; do
+            # Check for unterminated strings
+            if grep -Pn "('[^']*$)" "$f" 2>/dev/null; then
+              echo "WARNING: Possible unterminated string in $f"
+              errors=$((errors + 1))
+            fi
+          done
+          echo "SQL check complete. Warnings: $errors"
+
+      - name: ShellCheck – lint shell scripts
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: ./scripts
+          severity: warning
+        continue-on-error: true
+
+      - name: Verify required files exist
+        run: |
+          echo "Checking required project files..."
+          for f in \
+            docker-compose.yml \
+            .env.example \
+            sql/init/001_create_staging.sql \
+            sql/load/002_load_data.sql \
+            sql/transformations/010_clean_staging.sql \
+            sql/transformations/020_dim_tables.sql \
+            sql/transformations/030_fact_tables.sql \
+            sql/transformations/040_analytical_views.sql \
+            sql/validation/050_validate.sql \
+            scripts/run_pipeline.sh \
+            README.md; do
+            if [ -f "$f" ]; then
+              echo "  OK: $f"
+            else
+              echo "  MISSING: $f"
+              exit 1
+            fi
+          done
+          echo "All required files present."
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy .env.example to .env
+        run: cp .env.example .env
+
+      - name: Pull Docker images
+        run: docker compose pull mysql adminer
+
+      - name: Start MySQL
+        run: |
+          docker compose up -d mysql
+          echo "Waiting for MySQL to be healthy..."
+          timeout 120 bash -c 'until docker compose exec -T mysql mysqladmin ping -h 127.0.0.1 --silent 2>/dev/null; do sleep 2; done'
+          echo "MySQL is healthy."
+
+      - name: Verify staging tables created
+        run: |
+          docker compose exec -T mysql mysql -u root -prootpass507 olist_dw -e \
+            "SHOW TABLES LIKE 'stg_%';" | tee /dev/stderr | grep -c stg_ | \
+            xargs -I {} bash -c '[ {} -ge 9 ] && echo "All 9 staging tables found" || (echo "Expected 9 staging tables, found {}" && exit 1)'
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v

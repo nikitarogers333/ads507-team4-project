@@ -1,51 +1,78 @@
+###############################################################################
+# ADS-507 Team 4 – E-Commerce Data Pipeline
+# Docker Compose configuration for the Olist ETL pipeline
+# Usage:  docker compose up          (runs full pipeline once)
+#         docker compose up -d mysql adminer   (database + GUI only)
+###############################################################################
+
 services:
+  # ---------------------------------------------------------------------------
+  # MySQL 8.0 – persistent data store
+  # ---------------------------------------------------------------------------
   mysql:
     image: mysql:8.0
     container_name: ads507_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass507}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-olist_dw}
+      MYSQL_USER: ${MYSQL_USER:-user507}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-pass507}
     ports:
-      - "${MYSQL_PORT}:3306"
-    command: ["mysqld", "--local-infile=1"]
+      - "${MYSQL_PORT:-3306}:3306"
+    command:
+      - mysqld
+      - --local-infile=1
+      - --secure-file-priv=/data/raw
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./sql/schema:/docker-entrypoint-initdb.d:ro
-      - ./sql/mysql_conf:/etc/mysql/conf.d:ro
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
       - raw_data:/data/raw
-  
-  loader:
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Pipeline – downloads data, loads into MySQL, runs transformations
+  # ---------------------------------------------------------------------------
+  pipeline:
     image: alpine:3.19
-    container_name: ads507_loader
+    container_name: ads507_pipeline
     restart: "no"
-    depends_on: ["mysql"]
+    depends_on:
+      mysql:
+        condition: service_healthy
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      RELEASE_TAG: v1.0-raw-data
+      MYSQL_HOST: mysql
+      MYSQL_TCP_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-olist_dw}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass507}
+      RELEASE_TAG: ${RELEASE_TAG:-v1.0-raw-data}
       REPO_OWNER: nikitarogers333
       REPO_NAME: ads507-team4-project
     volumes:
       - raw_data:/data/raw
-      - ./sql/schema:/schema:ro
+      - ./sql:/sql:ro
       - ./scripts:/scripts:ro
-    command: ["sh", "/scripts/bootstrap_and_load.sh"]
+      - pipeline_logs:/logs
+    command: ["sh", "/scripts/run_pipeline.sh"]
 
+  # ---------------------------------------------------------------------------
+  # Adminer – lightweight database GUI on http://localhost:8081
+  # ---------------------------------------------------------------------------
   adminer:
     image: adminer:4
     container_name: ads507_adminer
-    environment:
-      ADMINER_DESIGN:pepa-linha
-      PHP_MEMORY_LIMIT=2G
-      UPLOAD_MAX_FILESIZE=2G
-      POST_MAX_SIZE=2G
     restart: unless-stopped
+    environment:
+      ADMINER_DESIGN: pepa-linha
     ports:
-      - "8081:8080"
+      - "${ADMINER_PORT:-8081}:8080"
 
 volumes:
   mysql_data:
   raw_data:
+  pipeline_logs:
